@@ -1,0 +1,7 @@
+{
+  "base_url": "https://natsu-tyo.github.io/blue-museum-memories",
+  "max_size": 1920,
+  "jpeg_quality": 85,
+  "empty_months": ["2026-10"],
+  "json_key": "photos"
+}
