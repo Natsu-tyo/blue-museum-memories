@@ -81,7 +81,7 @@ def build(root):
                 if not source.is_file() or source.name.startswith("."):
                     continue
                 if source.suffix.lower() not in EXTENSIONS:
-                    if source.name != "photos.json":
+                    if source.name not in {"photos.json", "README.md"}:
                         raise ValueError(f"Unsupported file: {source}")
                     continue
                 relative = Path(month_dir.name) / source.relative_to(month_dir).with_suffix(".jpg")
