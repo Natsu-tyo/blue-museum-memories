@@ -1,5 +1,6 @@
 """Build only _site; never modify originals or legacy YYYY-MM directories."""
 import io
+import hashlib
 import json
 import re
 import shutil
@@ -85,6 +86,8 @@ def build(root):
                         raise ValueError(f"Unsupported file: {source}")
                     continue
                 relative = Path(month_dir.name) / source.relative_to(month_dir).with_suffix(".jpg")
+                if relative.parts[1].casefold() in {"_slots", "gallery.json"}:
+                    raise ValueError(f"Reserved gallery path: {source}")
                 collision_key = relative.as_posix().casefold()
                 if collision_key in planned:
                     raise ValueError(f"JPEG name collision: {source} / {planned[collision_key][0]}")
@@ -106,6 +109,22 @@ def build(root):
         directory.mkdir(exist_ok=True)
         (directory / "photos.json").write_text(
             json.dumps({key: photos}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # Fixed, predeclared URLs allow Udon to load newly added photos.
+        entries = [relative for source, relative in sorted(
+            planned.values(), key=lambda pair: pair[1].as_posix()) if relative.parts[0] == month]
+        if len(entries) > 200:
+            raise ValueError(f"{month}: gallery supports at most 200 photos")
+        revision = hashlib.sha256()
+        for index, relative in enumerate(entries, 1):
+            data = (out / relative).read_bytes()
+            revision.update(relative.as_posix().encode("utf-8"))
+            revision.update(data)
+            slot = directory / "_slots" / f"{index:03d}.jpg"
+            slot.parent.mkdir(exist_ok=True)
+            slot.write_bytes(data)
+        (directory / "gallery.json").write_text(json.dumps({
+            "count": len(entries), "capacity": 200, "revision": revision.hexdigest()
+        }, indent=2) + "\n", encoding="utf-8")
     (out / ".nojekyll").touch()
     # Deliberately publish no repository files or originals.
     (out / "index.html").write_text(
@@ -117,3 +136,4 @@ def build(root):
 
 if __name__ == "__main__":
     build(Path(__file__).resolve().parents[1])
+
